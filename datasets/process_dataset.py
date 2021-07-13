@@ -15,16 +15,18 @@ from datasets.preprocess import (
     mapping, random_walk_with_restart_sampling
 )
 
+
 def default_label_graph(G):
     for node in G.nodes():
         G.nodes[node]['label'] = 'DEFAULT_LABEL'
     for edge in G.edges():
         G.edges[edge]['label'] = 'DEFAULT_LABEL'
-def check_graph_size(
-    graph, min_num_nodes=None, max_num_nodes=None,
-    min_num_edges=None, max_num_edges=None
-):
 
+
+def check_graph_size(
+        graph, min_num_nodes=None, max_num_nodes=None,
+        min_num_edges=None, max_num_edges=None
+):
     if min_num_nodes and graph.number_of_nodes() < min_num_nodes:
         return False
     if max_num_nodes and graph.number_of_nodes() > max_num_nodes:
@@ -39,8 +41,8 @@ def check_graph_size(
 
 
 def produce_graphs_from_raw_format(
-    args, inputfile, output_path, num_graphs=None, min_num_nodes=None,
-    max_num_nodes=None, min_num_edges=None, max_num_edges=None
+        args, inputfile, output_path, num_graphs=None, min_num_nodes=None,
+        max_num_nodes=None, min_num_edges=None, max_num_edges=None
 ):
     """
     :param inputfile: Path to file containing graphs in raw format
@@ -91,7 +93,7 @@ def produce_graphs_from_raw_format(
             index += 1
 
             if not check_graph_size(
-                G, min_num_nodes, max_num_nodes, min_num_edges, max_num_edges
+                    G, min_num_nodes, max_num_nodes, min_num_edges, max_num_edges
             ):
                 continue
 
@@ -116,9 +118,9 @@ def produce_graphs_from_raw_format(
 
 # For Enzymes, DD, Protetin dataset
 def produce_graphs_from_graphrnn_format(
-    args, input_path, dataset_name, output_path, num_graphs=None,
-    node_invariants=[], min_num_nodes=None, max_num_nodes=None,
-    min_num_edges=None, max_num_edges=None
+        args, input_path, dataset_name, output_path, num_graphs=None,
+        node_invariants=[], min_num_nodes=None, max_num_nodes=None,
+        min_num_edges=None, max_num_edges=None
 ):
     node_attributes = False
     graph_labels = False
@@ -156,7 +158,7 @@ def produce_graphs_from_graphrnn_format(
         if args.label:
             G.add_node(i + 1, label=str(data_node_label[i]))
         else:
-            G.add_node(i+1, label='DEFAULT_LABEL')
+            G.add_node(i + 1, label='DEFAULT_LABEL')
 
     G.remove_nodes_from(list(nx.isolates(G)))
 
@@ -173,7 +175,7 @@ def produce_graphs_from_graphrnn_format(
             G_sub.graph['id'] = data_graph_labels[i]
 
         if not check_graph_size(
-            G_sub, min_num_nodes, max_num_nodes, min_num_edges, max_num_edges
+                G_sub, min_num_nodes, max_num_nodes, min_num_edges, max_num_edges
         ):
             continue
 
@@ -195,7 +197,7 @@ def produce_graphs_from_graphrnn_format(
                     node_label += '-' + str(
                         bisect.bisect(cc_bins, clustering_coeff[node]))
 
-               # G_sub.nodes[node]['label'] = node_label
+            # G_sub.nodes[node]['label'] = node_label
 
             nx.set_edge_attributes(G_sub, 'DEFAULT_LABEL', 'label')
 
@@ -212,8 +214,8 @@ def produce_graphs_from_graphrnn_format(
 
 
 def sample_subgraphs(
-    args, idx, G, output_path, iterations, num_factor, min_num_nodes=None,
-    max_num_nodes=None, min_num_edges=None, max_num_edges=None
+        args, idx, G, output_path, iterations, num_factor, min_num_nodes=None,
+        max_num_nodes=None, min_num_edges=None, max_num_edges=None
 ):
     count = 0
     deg = G.degree[idx]
@@ -225,7 +227,7 @@ def sample_subgraphs(
         G_rw.remove_edges_from(nx.selfloop_edges(G_rw))
 
         if not check_graph_size(
-            G_rw, min_num_nodes, max_num_nodes, min_num_edges, max_num_edges
+                G_rw, min_num_nodes, max_num_nodes, min_num_edges, max_num_edges
         ):
             continue
 
@@ -238,9 +240,9 @@ def sample_subgraphs(
 
 
 def produce_random_walk_sampled_graphs(
-    args, input_path, dataset_name, output_path, iterations, num_factor,
-    num_graphs=None, min_num_nodes=None, max_num_nodes=None,
-    min_num_edges=None, max_num_edges=None
+        args, input_path, dataset_name, output_path, iterations, num_factor,
+        num_graphs=None, min_num_nodes=None, max_num_nodes=None,
+        min_num_edges=None, max_num_edges=None
 ):
     print('Producing random_walk graphs - num_factor - {}'.format(num_factor))
     G = nx.Graph()
@@ -306,29 +308,29 @@ def produce_random_walk_sampled_graphs(
 def create_graphs(args):
     base_path = os.path.join(args.dataset_path, f'{args.graph_type}/')
     # provide fake dataset (adopt from graphRNN code)
-    if args.graph_type=='ladder':
+    if args.graph_type == 'ladder':
         graphs = []
         for i in range(100, 201):
             graph = nx.ladder_graph(i)
             default_label_graph(graph)
             graphs.append(graph)
         args.max_prev_node = 10
-    elif args.graph_type=='ladder_small':
+    elif args.graph_type == 'ladder_small':
         graphs = []
         for i in range(2, 11):
             graph = nx.ladder_graph(i)
             default_label_graph(graph)
             graphs.append(graph)
         args.max_prev_node = 10
-    elif args.graph_type=='tree':
+    elif args.graph_type == 'tree':
         graphs = []
         for i in range(2, 5):
             for j in range(3, 5):
-                graph = nx.balanced_tree(i,j)
+                graph = nx.balanced_tree(i, j)
                 default_label_graph(graph)
                 graphs.append(graph)
         args.max_prev_node = 256
-    elif args.graph_type=='caveman':
+    elif args.graph_type == 'caveman':
         graphs = []
         for i in range(2, 3):
             for j in range(30, 81):
@@ -338,25 +340,25 @@ def create_graphs(args):
                     graphs.append(graph)
         args.max_prev_node = 100
 
-    elif args.graph_type=='caveman_small':
+    elif args.graph_type == 'caveman_small':
         graphs = []
         for i in range(2, 3):
             for j in range(6, 11):
                 for k in range(100):
-                    graph = caveman_special(i, j, p_edge=0.8) # default 0.8
+                    graph = caveman_special(i, j, p_edge=0.8)  # default 0.8
                     default_label_graph(graph)
                     graphs.append(graph)
         args.max_prev_node = 20
 
-    elif args.graph_type=='path':
+    elif args.graph_type == 'path':
         graphs = []
         for l in range(2, 51):
-            graph = nx.path_graph(l) # default 0.8
+            graph = nx.path_graph(l)  # default 0.8
             default_label_graph(graph)
             graphs.append(graph)
         args.max_prev_node = 50
 
-    elif args.graph_type=='caveman_small_single':
+    elif args.graph_type == 'caveman_small_single':
         graphs = []
         for i in range(2, 3):
             for j in range(8, 9):
@@ -372,23 +374,23 @@ def create_graphs(args):
 
         # c_sizes = [15] * num_communities
         for k in range(3000):
-            c_sizes = np.random.choice(np.arange(start=15,stop=30), num_communities)
+            c_sizes = np.random.choice(np.arange(start=15, stop=30), num_communities)
             graph = n_community(c_sizes, p_inter=0.01)
             default_label_graph(graph)
             graphs.append(graph)
         args.max_prev_node = 80
-    elif args.graph_type=='grid':
+    elif args.graph_type == 'grid':
         graphs = []
-        for i in range(10,20):
-            for j in range(10,20):
-                graph = nx.grid_2d_graph(i,j)
+        for i in range(10, 20):
+            for j in range(10, 20):
+                graph = nx.grid_2d_graph(i, j)
                 default_label_graph(graph)
                 graphs.append(graph)
         args.max_prev_node = 40
-    elif args.graph_type=='grid_small':
+    elif args.graph_type == 'grid_small':
         graphs = []
-        for i in range(2,8):
-            for j in range(2,8):
+        for i in range(2, 8):
+            for j in range(2, 8):
                 graph = nx.grid_2d_graph(i, j)
                 nodes = list(graph.nodes())
                 node_mapping = {nodes[i]: i for i in range(len(nodes))}
@@ -396,40 +398,40 @@ def create_graphs(args):
                 default_label_graph(graph)
                 graphs.append(graph)
         args.max_prev_node = 15
-    elif args.graph_type=='grid_big':
+    elif args.graph_type == 'grid_big':
         graphs = []
         for i in range(36, 46):
             for j in range(36, 46):
-                graph = nx.grid_2d_graph(i,j)
+                graph = nx.grid_2d_graph(i, j)
                 default_label_graph(graph)
                 graphs.append(graph)
         args.max_prev_node = 90
-    elif args.graph_type=='barabasi':
+    elif args.graph_type == 'barabasi':
         graphs = []
-        for i in range(100,200):
-             for j in range(4,5):
-                 for k in range(5):
-                     graph = nx.barabasi_albert_graph(i,j)
-                     default_label_graph(graph)
-                     graphs.append(graph)
+        for i in range(100, 200):
+            for j in range(4, 5):
+                for k in range(5):
+                    graph = nx.barabasi_albert_graph(i, j)
+                    default_label_graph(graph)
+                    graphs.append(graph)
         args.max_prev_node = 130
-    elif args.graph_type=='barabasi_small':
+    elif args.graph_type == 'barabasi_small':
         graphs = []
-        for i in range(4,21):
-             for j in range(3,4):
-                 for k in range(10):
-                     graph = nx.barabasi_albert_graph(i,j)
-                     default_label_graph(graph)
-                     graphs.append(graph)
+        for i in range(4, 21):
+            for j in range(3, 4):
+                for k in range(10):
+                    graph = nx.barabasi_albert_graph(i, j)
+                    default_label_graph(graph)
+                    graphs.append(graph)
         args.max_prev_node = 20
 
     elif 'barabasi_noise' in args.graph_type:
         graphs = []
-        for i in range(100,101):
-            for j in range(4,5):
+        for i in range(100, 101):
+            for j in range(4, 5):
                 for k in range(500):
-                    graphs.append(nx.barabasi_albert_graph(i,j))
-        graphs = perturb_new(graphs, p=args.noise/10.0)
+                    graphs.append(nx.barabasi_albert_graph(i, j))
+        graphs = perturb_new(graphs, p=args.noise / 10.0)
         graphs = [default_label_graph(graph) for graph in graphs]
         args.max_prev_node = 99
 
@@ -516,9 +518,8 @@ def create_graphs(args):
     args.current_dataset_path = os.path.join(base_path, 'graphs/')
     args.current_processed_dataset_path = args.current_dataset_path
 
-
     if args.produce_graphs:
-        mkdir(args.current_dataset_path)
+        # mkdir(args.current_dataset_path)
 
         if args.graph_type in ['Lung', 'Breast', 'Leukemia', 'Yeast', 'All']:
             count = produce_graphs_from_raw_format(
@@ -542,9 +543,9 @@ def create_graphs(args):
                 max_num_edges=max_num_edges)
 
         elif args.graph_type in ['ladder', 'ladder_small', 'tree', 'caveman',
-                                'caveman_small', 'caveman_small_single', 'grid',
-                                'grid_small', 'barabasi', 'barabasi_small', 'grid_big', 'path'] or\
-            args.graph_type.startswith('community') or 'barabasi_noise' in args.graph_type:
+                                 'caveman_small', 'caveman_small_single', 'grid',
+                                 'grid_small', 'barabasi', 'barabasi_small', 'grid_big', 'path'] or \
+                args.graph_type.startswith('community') or 'barabasi_noise' in args.graph_type:
             save_graphs(args.current_dataset_path, graphs)
             count = len(graphs)
 
@@ -567,7 +568,5 @@ def create_graphs(args):
     if args.data_small == True and len(graphs) > 400:
         print('Using small dataset....')
         graphs = random.sample(graphs, 400)
-
-
 
     return graphs

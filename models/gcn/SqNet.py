@@ -42,8 +42,9 @@ class sequential_net0(nn.Module):
         for idx_g in range(len(g)):
             # sample permutation
             batch_perm_g, ll_q_g, log_rep_g = self.rep_computer(g[idx_g]['G'], params=parameterizations[idx_g],
-                                                         device=self.args.device, M=m,
-                                                         nobfs=self.args.nobfs, max_cr_iteration=self.args.max_cr_iteration)
+                                                                device=self.args.device, M=m,
+                                                                nobfs=self.args.nobfs,
+                                                                max_cr_iteration=self.args.max_cr_iteration)
             # batch_perms.append(perms)
             log_reps[idx_g].copy_(log_rep_g)
             log_probs[idx_g].copy_(ll_q_g)
@@ -60,7 +61,7 @@ class sequential_net1(nn.Module):
         super().__init__()
 
         if args.gcn_type == 'gcn':
-            self.node_embedding = GCNNet(args, len_node_vec, out_dim=hidden_dim ).to(args.device)
+            self.node_embedding = GCNNet(args, len_node_vec, out_dim=hidden_dim).to(args.device)
         elif args.gcn_type == 'gat':
             self.node_embedding = GATNet(args, len_node_vec, out_dim=hidden_dim).to(args.device)
         elif args.gcn_type == 'appnp':
@@ -86,7 +87,7 @@ class sequential_net1(nn.Module):
         perms = [[] for _ in batch_num_nodes]
         candidate_nodes = [list(range(num_nodes)) for num_nodes in batch_num_nodes]
         remaining_graphs = [i for i in range(len(unbatch_dG)) if batch_num_nodes[i] > len(perms[i])]
-        log_probs = torch.zeros(self.args.batch_size * m, device=self.args.device)#, requires_grad=True)
+        log_probs = torch.zeros(self.args.batch_size * m, device=self.args.device)  # , requires_grad=True)
 
         batch_dG_t = batch_dG
         batch_dGX_t = batch_dGX
@@ -110,7 +111,7 @@ class sequential_net1(nn.Module):
             # -----------------------------------preparation for step t+1-----------------------------------
 
             # update remaining_graphs: correct
-            remaining_graphs = [i for i in range(self.args.batch_size*m) if batch_num_nodes[i] > len(perms[i])]
+            remaining_graphs = [i for i in range(self.args.batch_size * m) if batch_num_nodes[i] > len(perms[i])]
 
             if not remaining_graphs:
                 break
@@ -122,14 +123,14 @@ class sequential_net1(nn.Module):
             batch_dG_t = dgl.batch([unbatch_dG[rg] for rg in remaining_graphs])
             batch_dGX_t = batch_dG_t.ndata['feat'].long()
 
-        log_reps = torch.zeros(self.args.batch_size*m, requires_grad=False, device=self.args.device)
+        log_reps = torch.zeros(self.args.batch_size * m, requires_grad=False, device=self.args.device)
 
-        for i in range(self.args.batch_size*m):
+        for i in range(self.args.batch_size * m):
             if self.args.note == "DGMG":
-                log_rep = self.rep_computer.compute_repetition(g[i//m]['G'], perms[i])
+                log_rep = self.rep_computer.compute_repetition(g[i // m]['G'], perms[i])
             else:
-                log_rep = compute_autogrp_n(g[i//m]['G'])
-            #log_rep = self.rep_computer.compute_repetition(g[i // m]['G'], perms[i])  #use color-refinement for all model
+                log_rep = compute_autogrp_n(g[i // m]['G'])
+            # log_rep = self.rep_computer.compute_repetition(g[i // m]['G'], perms[i])  #use color-refinement for all model
             log_reps[i].fill_(log_rep)
 
         perms = [perms[i::m] for i in range(m)]
@@ -157,11 +158,11 @@ class sequential_net2(nn.Module):
         super().__init__()
 
         if args.gcn_type == 'gcn':
-            self.node_embedding = GCNNet(args, 2*len_node_vec, out_dim=hidden_dim).to(args.device)
+            self.node_embedding = GCNNet(args, 2 * len_node_vec, out_dim=hidden_dim).to(args.device)
         elif args.gcn_type == 'gat':
-            self.node_embedding = GATNet(args, 2*len_node_vec, out_dim=hidden_dim).to(args.device)
+            self.node_embedding = GATNet(args, 2 * len_node_vec, out_dim=hidden_dim).to(args.device)
         elif args.gcn_type == 'appnp':
-            self.node_embedding = APPNET(args, 2*len_node_vec, out_dim=hidden_dim).to(args.device)
+            self.node_embedding = APPNET(args, 2 * len_node_vec, out_dim=hidden_dim).to(args.device)
         self.node_readout = MLPReadout(hidden_dim, 1).to(args.device)
         self.args = args
         self.rep_computer = mp_sampler(args, vf2)
@@ -207,16 +208,17 @@ class sequential_net2(nn.Module):
 
             # update permutation up to time step t
 
-            ig = 0  #id of graph
+            ig = 0  # id of graph
             for node_id, rg in zip(nodes_t, remaining_graphs):
                 perms[rg].append(node_id)
-                #change colors
-                unbatch_dG[rg].ndata['feat'][nodes_t[ig], 0] = unbatch_dG[rg].ndata['feat'][nodes_t[ig], 0] + self.len_node_vec
-                ig= ig + 1
+                # change colors
+                unbatch_dG[rg].ndata['feat'][nodes_t[ig], 0] = unbatch_dG[rg].ndata['feat'][
+                                                                   nodes_t[ig], 0] + self.len_node_vec
+                ig = ig + 1
 
             # -----------------------------------preparation for step t+1-----------------------------------
 
-                # update remaining_graphs: correct
+            # update remaining_graphs: correct
             remaining_graphs = [i for i in range(self.args.batch_size * m) if batch_num_nodes[i] > len(perms[i])]
 
             if not remaining_graphs:
@@ -230,10 +232,9 @@ class sequential_net2(nn.Module):
             batch_dG_t = dgl.batch([unbatch_dG[rg] for rg in remaining_graphs])
             batch_dGX_t = batch_dG_t.ndata['feat'].long()
 
-        log_reps = torch.zeros(self.args.batch_size*m, requires_grad=False, device=self.args.device)
+        log_reps = torch.zeros(self.args.batch_size * m, requires_grad=False, device=self.args.device)
 
         for i in range(self.args.batch_size * m):
-
             log_rep = self.rep_computer.compute_repetition(g[i // m]['G'], perms[i])
             log_reps[i].fill_(log_rep)
             # print(self.sample_time)
@@ -279,7 +280,7 @@ class sequential_net_dfscode(nn.Module):
         # m: sample_size
         # input embedding
         unbatch_dG = [graph['dG'].to(self.args.device) for graph in g for _ in range(m)]
-        #net_G
+        # net_G
         unbatch_G = [graph['G'] for graph in g for _ in range(m)]
 
         batch_dG = dgl.batch(unbatch_dG)
@@ -288,15 +289,13 @@ class sequential_net_dfscode(nn.Module):
         batch_num_nodes = batch_dG.batch_num_nodes()
 
         max_step = max(batch_num_nodes)
-        #relabel node for dfs_code ^-^
+        # relabel node for dfs_code ^-^
         node_map = [{} for g in unbatch_dG]
         re_node_map = [{} for g in unbatch_dG]
-        #record added node
+        # record added node
         added_nodes = [set() for g in unbatch_dG]
-        #dfs_code
+        # dfs_code
         dfs_codes = [[] for g in unbatch_dG]
-
-
 
         perms = [[] for _ in batch_num_nodes]
         candidate_nodes = [list(range(num_nodes)) for num_nodes in batch_num_nodes]
@@ -326,31 +325,31 @@ class sequential_net_dfscode(nn.Module):
 
             nodes_t, log_probs_t = self.sample(parameterizations, candidate_nodes_t, unbatch_G_t, added_nodes_t, t)
 
-
-            #update map
+            # update map
             for index, map in enumerate(node_map_t):
                 map[nodes_t[index]] = t
                 re_node_map_t[index][t] = nodes_t[index]
                 # update candidate_nodes
-                candidate_nodes[remaining_graphs[index]]=candidate_nodes_t[index]
-            #TODO: import implementation: create dfs_code
+                candidate_nodes[remaining_graphs[index]] = candidate_nodes_t[index]
+            # TODO: import implementation: create dfs_code
 
             for i in range(len(nodes_t)):
-                #current_graph
+                # current_graph
                 graph_cur = unbatch_G_t[i]
                 # find edges to be added to code
                 neighbors = [node for node in graph_cur.neighbors(nodes_t[i]) if node in added_nodes_t[i]]
-                #map to code number space, and sort
+                # map to code number space, and sort
                 node_map_acc = node_map_t[i]
                 code_ns = [node_map_acc[node] for node in neighbors]
                 code_ns.sort()
-                #new node map
+                # new node map
                 cur_node = node_map_acc[nodes_t[i]]
-                #append edges to dfs_codes
+                # append edges to dfs_codes
                 for node in code_ns:
-                    #always from old to new
-                    new_code = [node, cur_node, graph_cur.nodes[re_node_map_t[i][node]]['label'], graph_cur.edges[re_node_map_t[i][node],
-                                 nodes_t[i]]['label'], graph_cur.nodes[nodes_t[i]]['label']]
+                    # always from old to new
+                    new_code = [node, cur_node, graph_cur.nodes[re_node_map_t[i][node]]['label'],
+                                graph_cur.edges[re_node_map_t[i][node],
+                                                nodes_t[i]]['label'], graph_cur.nodes[nodes_t[i]]['label']]
                     dfs_codes_t[i].append(new_code)
 
             # update log prob
@@ -358,16 +357,16 @@ class sequential_net_dfscode(nn.Module):
 
             # update permutation up to time step t
 
-            ig = 0  #id of graph
+            ig = 0  # id of graph
             for node_id, rg in zip(nodes_t, remaining_graphs):
                 perms[rg].append(node_id)
-                #change colors
-                #unbatch_dG[rg].ndata['feat'][nodes_t[ig], 0] = unbatch_dG[rg].ndata['feat'][nodes_t[ig], 0] + self.len_node_vec
-                ig= ig + 1
+                # change colors
+                # unbatch_dG[rg].ndata['feat'][nodes_t[ig], 0] = unbatch_dG[rg].ndata['feat'][nodes_t[ig], 0] + self.len_node_vec
+                ig = ig + 1
 
             # -----------------------------------preparation for step t+1-----------------------------------
 
-                # update remaining_graphs: correct
+            # update remaining_graphs: correct
             remaining_graphs = [i for i in range(self.args.batch_size * m) if batch_num_nodes[i] > len(perms[i])]
 
             if not remaining_graphs:
@@ -387,12 +386,10 @@ class sequential_net_dfscode(nn.Module):
             re_node_map_t = [re_node_map[rg] for rg in remaining_graphs]
             node_map_t = [node_map[rg] for rg in remaining_graphs]
 
-        log_reps = torch.zeros(self.args.batch_size*m, requires_grad=False, device=self.args.device)
+        log_reps = torch.zeros(self.args.batch_size * m, requires_grad=False, device=self.args.device)
 
         for i in range(self.args.batch_size * m):
-
-
-            log_rep = self.rep_computer.compute_repetition(g[i//m]['G'], perms[i])
+            log_rep = self.rep_computer.compute_repetition(g[i // m]['G'], perms[i])
 
             # print(self.sample_time)
             # self.sample_time = 0
@@ -402,10 +399,8 @@ class sequential_net_dfscode(nn.Module):
         log_probs = log_probs.view(self.args.batch_size, m)
         log_reps = log_reps.view(self.args.batch_size, m)
 
-
-        #finsh dfs_codes in this function
+        # finsh dfs_codes in this function
         return perms, log_probs, log_reps, dfs_codes
-
 
     def sample(self, params, candidates, unbatch_G, added_nodes, iter):
         nodes = []
@@ -416,14 +411,13 @@ class sequential_net_dfscode(nn.Module):
             real_node_id = candidate[fake_node_id]
             added_nodes[b].add(real_node_id)
             nodes.append(real_node_id)
-            #candidates[b].remove(real_node_id)
+            # candidates[b].remove(real_node_id)
             log_probs[b] = torch.log(categorical_params[fake_node_id])
-            #reviced directly on list, will influence global list
+            # reviced directly on list, will influence global list
             if iter != 0:
-                #candidates[b] = list(set(candidates[b]).update([n for n in unbatch_G[b].neighbors(real_node_id)]).difference_update(added_nodes[b]))
+                # candidates[b] = list(set(candidates[b]).update([n for n in unbatch_G[b].neighbors(real_node_id)]).difference_update(added_nodes[b]))
                 candidates[b] = set(candidates[b])
                 candidates[b].update([n for n in unbatch_G[b].neighbors(real_node_id)])
-
 
                 candidates[b].difference_update(added_nodes[b])
                 candidates[b] = list(candidates[b])

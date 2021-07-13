@@ -12,7 +12,7 @@ from utils import save_model, load_model, get_model_attribute, get_last_checkpoi
 from models.gcn.helper import legal_perms_sampler
 from models.graph_rnn.train import evaluate_loss as eval_loss_graph_rnn
 from models.dgmg.train import evaluate_loss as eval_loss_dgmg
-from models.gran.model import evaluate_loss as eval_loss_gran
+# from models.gran.model import evaluate_loss as eval_loss_gran
 from models.graphgen.train import evaluate_loss as eval_loss_graphgen
 from torch.utils.data._utils.collate import default_collate as collate
 
@@ -31,7 +31,7 @@ def evaluate_loss(args, model, gcn, processor, sample_perm, graphs, feature_map,
     batch_G = [graph['G'] for graph in graphs]
     real_batch_size = len(batch_G)
     # gcn feed-forward
-    #get number of node labels
+    # get number of node labels
     len_node_vec = len(feature_map['node_forward'])
 
     #  ------ update Dec 4: sequential decision ------
@@ -41,17 +41,14 @@ def evaluate_loss(args, model, gcn, processor, sample_perm, graphs, feature_map,
         if args.note != 'Graphgen':
             batch_perms, ll_q, log_repetitions = gcn(graphs, args.sample_size)
         elif args.note == 'Graphgen':
-            #dfs_code_list used for p(g)
+            # dfs_code_list used for p(g)
             batch_perms, ll_q, log_repetitions, dfs_code_list = gcn(graphs, args.sample_size)
-
-
-
 
         # log_repetitions[:, idx_m].copy_(log_repetition_m)
         # ll_q[:, idx_m].copy_(ll_q_m)
         # batch_perms.append(batch_perm_m)
     else:
-        log_repetitions = torch.empty((real_batch_size, args.sample_size), requires_grad=False) # (N, M)
+        log_repetitions = torch.empty((real_batch_size, args.sample_size), requires_grad=False)  # (N, M)
         ll_q = torch.empty((real_batch_size, args.sample_size), device=args.device)
         # adopt uniform sampling
         batch_num_nodes = [graph.number_of_nodes() for graph in batch_G]
@@ -63,8 +60,8 @@ def evaluate_loss(args, model, gcn, processor, sample_perm, graphs, feature_map,
         for idx_g in range(len(batch_G)):
             # sample permutation
             batch_perm_g, ll_q_g, log_reps = sample_perm(graphs[idx_g]['G'], params=parameterizations[idx_g],
-                                                              device=args.device, M=args.sample_size,
-                                                              nobfs=args.nobfs, max_cr_iteration=args.max_cr_iteration)
+                                                         device=args.device, M=args.sample_size,
+                                                         nobfs=args.nobfs, max_cr_iteration=args.max_cr_iteration)
             # batch_perms.append(perms)
             log_repetitions[idx_g].copy_(log_reps)
             ll_q[idx_g].copy_(ll_q_g)
@@ -109,10 +106,10 @@ def evaluate_loss(args, model, gcn, processor, sample_perm, graphs, feature_map,
     elif args.note == 'DGMG':
         # TODO: data process and training for DGMG
         # for i_g, graph in enumerate(batch_G):
-            # data = [processor(graph, perms[i_g]) for perms in batch_perms]
-            # # data = processor.collate_batch(data)
-            # nll_p_g = eval_loss_dgmg(model['dgmg'], data)
-            # nll_p[i_g, :].copy_(nll_p_g)
+        # data = [processor(graph, perms[i_g]) for perms in batch_perms]
+        # # data = processor.collate_batch(data)
+        # nll_p_g = eval_loss_dgmg(model['dgmg'], data)
+        # nll_p[i_g, :].copy_(nll_p_g)
         assert args.batch_size == 1
         for m in range(args.sample_size):
             data = [processor(graph, perms) for graph, perms in zip(batch_G, batch_perms[m])]
@@ -126,10 +123,7 @@ def evaluate_loss(args, model, gcn, processor, sample_perm, graphs, feature_map,
             data = [processor(code, feature_map) for code in dfs_code_list[m::args.sample_size]]
             data = collate(data)
             nll_p_m = eval_loss_graphgen(args, model, data, feature_map)
-            nll_p[:,m].copy_(nll_p_m)
-
-
-
+            nll_p[:, m].copy_(nll_p_m)
 
     # log p_hat(G, pi) = log p(G|pi)p(pi) - log rep
     ll_p_hat = -nll_p - log_repetitions
@@ -138,12 +132,12 @@ def evaluate_loss(args, model, gcn, processor, sample_perm, graphs, feature_map,
     if not args.enable_gcn:
         fake_nll_q = 0
     else:
-        fake_nll_q = -torch.mean(torch.mean((ll_p_hat.detach()-ll_q.detach()) * ll_q, dim=1))
+        fake_nll_q = -torch.mean(torch.mean((ll_p_hat.detach() - ll_q.detach()) * ll_q, dim=1))
 
     nll_p = -torch.mean(torch.mean(ll_p_hat, dim=1))
 
     # compute elbo ( no gradient computation involved) elbo = 1/M * sum_{i=1}^M elbo_i
-    elbo = torch.mean(ll_p_hat.detach()-ll_q.detach())
+    elbo = torch.mean(ll_p_hat.detach() - ll_q.detach())
 
     ll_q = torch.mean(ll_q)
     # print(entropy)
@@ -171,18 +165,19 @@ def train_epoch(
             gcn.zero_grad()
 
         st = time.time()
-        nll_p, fake_nll_q, elbo, ll_q = evaluate_loss(args, model, gcn, processor, sample_perm, graphs, feature_map, epoch)
+        nll_p, fake_nll_q, elbo, ll_q = evaluate_loss(args, model, gcn, processor, sample_perm, graphs, feature_map,
+                                                      epoch)
         loss = nll_p + fake_nll_q
 
         loss.backward()
         gradient = gcn.node_readout.FC_layers[0].bias.grad
 
-
         total_loss += elbo.data.item()
 
         spent = time.time() - st
         if batch_id % args.print_interval == 0:
-            print('epoch {} batch {}: elbo is {}, llq is {}, time spent is {}.'.format(epoch, batch_id, elbo, ll_q, spent), flush=True)
+            print('epoch {} batch {}: elbo is {}, llq is {}, time spent is {}.'.format(epoch, batch_id, elbo, ll_q,
+                                                                                       spent), flush=True)
 
         log_history['batch_elbo'].append(elbo.data.item())
         log_history['batch_time'].append(spent)
@@ -211,7 +206,8 @@ def test_data(epoch, args, model, gcn, dataloader_validate, processor, sample_pe
         total_loss = 0.0
         ll_qs = 0.0
         for _, graphs in enumerate(dataloader_validate):
-            loss_model, loss_gcn, elbo, ll_q = evaluate_loss(args, model, gcn, processor, sample_perm, graphs, feature_map, epoch)
+            loss_model, loss_gcn, elbo, ll_q = evaluate_loss(args, model, gcn, processor, sample_perm, graphs,
+                                                             feature_map, epoch)
             # loss = loss_model + loss_gcn
             # total_loss += loss.data.item()
             ll_qs += ll_q
@@ -229,7 +225,7 @@ def train(args, model, gcn, feature_map, dataloader_train, dataloader_validate, 
             filter(lambda p: p.requires_grad, net.parameters()), lr=args.lr,
             weight_decay=5e-5)
     if args.enable_gcn:
-        optimizer['optimizer_gcn'] = optim.Adam(gcn.parameters(), lr=args.lr*5, weight_decay=5e-5)
+        optimizer['optimizer_gcn'] = optim.Adam(gcn.parameters(), lr=args.lr * 5, weight_decay=5e-5)
 
     scheduler = {}
     for name, net in model.items():
@@ -261,15 +257,15 @@ def train(args, model, gcn, feature_map, dataloader_train, dataloader_validate, 
 
     if args.log_tensorboard:
         writer = SummaryWriter(
-            log_dir=args.tensorboard_path+ ' ' + args.time, flush_secs=5)
+            log_dir=args.tensorboard_path + ' ' + args.time, flush_secs=5)
     else:
         writer = None
-
 
     while epoch < args.epochs:
         # train
         loss = train_epoch(
-            epoch, args, model, gcn, dataloader_train, processor, sample_perm, optimizer, scheduler, feature_map, log_history, writer)
+            epoch, args, model, gcn, dataloader_train, processor, sample_perm, optimizer, scheduler, feature_map,
+            log_history, writer)
         epoch += 1
 
         if args.log_tensorboard:
@@ -278,12 +274,14 @@ def train(args, model, gcn, feature_map, dataloader_train, dataloader_validate, 
         print('Epoch: {}/{}, train loss: {:.6f}'.format(epoch, args.epochs, loss))
 
         # validate
-        loss_validate, entropys_validate = test_data(epoch, args, model, gcn, dataloader_validate, processor, sample_perm, feature_map)
+        loss_validate, entropys_validate = test_data(epoch, args, model, gcn, dataloader_validate, processor,
+                                                     sample_perm, feature_map)
         entropys_validate = entropys_validate / args.sample_size
         if args.log_tensorboard:
             writer.add_scalar('{} {} Loss/validate'.format(args.note, args.graph_type), loss_validate, epoch)
 
-        print('Epoch: {}/{}, validation loss: {:.6f}  entropy: {:.6f}'.format(epoch, args.epochs, loss_validate, entropys_validate), flush=True)
+        print('Epoch: {}/{}, validation loss: {:.6f}  entropy: {:.6f}'.format(epoch, args.epochs, loss_validate,
+                                                                              entropys_validate), flush=True)
 
         # save model
         save_model(epoch, args, model, gcn, optimizer, scheduler, feature_map=feature_map)
@@ -303,4 +301,3 @@ def train(args, model, gcn, feature_map, dataloader_train, dataloader_validate, 
 
         df_iter.to_csv(args.logging_iter_path, index=False)
         df_epoch.to_csv(args.logging_epoch_path, index=False)
-

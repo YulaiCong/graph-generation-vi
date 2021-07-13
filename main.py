@@ -13,12 +13,10 @@ from models.graph_rnn.data import Graph_to_Adj_Matrix, Graph_Adj_Matrix
 from models.dgmg.data import Graph_to_Action
 from models.gcn.helper import legal_perms_sampler, mp_sampler
 from models.graphgen.helper import dfscode_to_tensor
-from models.gran.data import GRANData
+# from models.gran.data import GRANData
 
 from model import create_models
 from train import train
-
-
 
 if __name__ == '__main__':
     args = Args()
@@ -34,8 +32,6 @@ if __name__ == '__main__':
     random.shuffle(graphs)
     graphs_train = graphs[: int(0.80 * len(graphs))]
     graphs_validate = graphs[int(0.80 * len(graphs)): int(0.90 * len(graphs))]
-
-
 
     # show graphs statistics
     print('Model:', args.note)
@@ -63,7 +59,7 @@ if __name__ == '__main__':
             if args.nobfs:
                 args.max_prev_node = feature_map['max_nodes'] - 1
             if args.max_prev_node is None:
-                    args.max_prev_node = calc_max_prev_node(args.current_processed_dataset_path)
+                args.max_prev_node = calc_max_prev_node(args.current_processed_dataset_path)
 
             args.max_head_and_tail = None
             print('max_prev_node:', args.max_prev_node)
@@ -78,18 +74,17 @@ if __name__ == '__main__':
             dataset_train, batch_size=args.batch_size, shuffle=True, drop_last=True,
             num_workers=args.num_workers, collate_fn=dataset_train.collate_batch)
         dataloader_validate = DataLoader(
-            dataset_validate, batch_size=args.batch_size, shuffle=False,drop_last=True,
+            dataset_validate, batch_size=args.batch_size, shuffle=False, drop_last=True,
             num_workers=args.num_workers, collate_fn=dataset_validate.collate_batch)
-    
+
         if args.note == 'GraphRNN':
             processor = Graph_to_Adj_Matrix(args, feature_map, random_bfs=True)
         elif args.note == 'DGMG':
             processor = Graph_to_Action(args, feature_map)
-        elif args.note == 'Graphgen'  :
+        elif args.note == 'Graphgen':
             processor = dfscode_to_tensor
-        elif args.note == 'GRAN'  :
-            processor = GRANData(args,feature_map['max_nodes'])
-
+        elif args.note == 'GRAN':
+            processor = GRANData(args, feature_map['max_nodes'])
 
         if args.use_mp_sampler:
             sample_perm = mp_sampler(args)
@@ -114,8 +109,3 @@ if __name__ == '__main__':
 
     else:
         train_b(args, graphs_train, graphs_validate, feature_map)
-
-
-
-
-

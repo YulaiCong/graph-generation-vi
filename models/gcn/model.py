@@ -4,7 +4,7 @@ from models.gcn.SqNet import *
 
 
 def create_model(args, feature_map, vf2=False):
-    #used for embedding layer in GCN model
+    # used for embedding layer in GCN model
     len_node_vec = len(feature_map['node_forward'])
 
     if args.sample_arch == "ORI":

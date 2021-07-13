@@ -12,8 +12,6 @@ import pynauty as pnt
 from utils import nx_to_nauty
 
 
-
-
 def logcumsumexp(x, dim):
     # slow implementation, but ok for now
     if (dim != -1) or (dim != x.ndimension() - 1):
@@ -50,7 +48,7 @@ def smart_perm(x, permutation):
 
 
 def reverse_logcumsumexp(x, dim):
-    return torch.flip(logcumsumexp(torch.flip(x, dims=(dim, )), dim), dims=(dim, ))
+    return torch.flip(logcumsumexp(torch.flip(x, dims=(dim,)), dim), dims=(dim,))
 
 
 class PlackettLuce(Distribution):
@@ -58,6 +56,7 @@ class PlackettLuce(Distribution):
         Plackett-Luce distribution
     """
     arg_constraints = {"logits": constraints.real}
+
     def __init__(self, logits):
         # last dimension is for scores of plackett luce
         super(PlackettLuce, self).__init__()
@@ -91,6 +90,7 @@ def color_refinement(G, iterations, edge_attr=None, node_attr=None):
     """
     This is adopted from weisfeiler_lehman_graph_hash function in networkx
     """
+
     def neighborhood_aggregate(G, node, node_labels, edge_attr=None):
         """
         Compute new labels for given node by aggregating
@@ -133,13 +133,14 @@ def color_refinement(G, iterations, edge_attr=None, node_attr=None):
 
 def compute_repetition(graph, perm, device, max_cr_iteration):
     # compute repetition given a graph and order
-    subgraphs = [graph.subgraph(perm[:i+1]) for i in range(len(perm))]
+    subgraphs = [graph.subgraph(perm[:i + 1]) for i in range(len(perm))]
     reps = []
     # cr_time = []
     for i, subgraph in enumerate(subgraphs):
         # TODO: add early stop
         # st = time.time()
-        node_labels = color_refinement(subgraph, iterations=min(subgraph.number_of_nodes(), max_cr_iteration)) # use 10 here to avoid expensive computation!
+        node_labels = color_refinement(subgraph, iterations=min(subgraph.number_of_nodes(),
+                                                                max_cr_iteration))  # use 10 here to avoid expensive computation!
         # cr_time.append(time.time() - st)
         reps.append(list(node_labels.values()).count(node_labels[perm[i]]))
     # print(reps)
@@ -273,6 +274,7 @@ def worker_loop(index_queue, data_queue, done_event):
         data_queue.cancel_join_thread()
         data_queue.close()
 
+
 def worker_loop_vf2(index_queue, data_queue, done_event):
     try:
         iteration_end = False
@@ -320,10 +322,12 @@ def worker_loop_vf2(index_queue, data_queue, done_event):
         data_queue.cancel_join_thread()
         data_queue.close()
 
+
 def compute_autogrp_n(graph):
     na_graph = nx_to_nauty(graph)
     n_autogrp = pnt.autgrp(na_graph)[1]
     return torch.log(torch.tensor(n_autogrp, dtype=torch.float32, requires_grad=False))
+
 
 class mp_sampler():
     def __init__(self, args, vf2=False):
@@ -353,11 +357,12 @@ class mp_sampler():
         perm_length = len(perm)
         # subgraphs = ([graph.subgraph(perm[:i + 1]) for i in range(len(perm))])
         # for idx in range(perm_length):
-        for idx in range(perm_length-1, -1, -1):
+        for idx in range(perm_length - 1, -1, -1):
             # TODO: add early stop
             worker_id = idx % self._num_workers
             subgraph = graph.subgraph(perm[:idx + 1])
-            self._index_queues[worker_id].put((subgraph, min(subgraph.number_of_nodes(), self.max_cr_iteration), perm[idx]))
+            self._index_queues[worker_id].put(
+                (subgraph, min(subgraph.number_of_nodes(), self.max_cr_iteration), perm[idx]))
         count = 0
         results = []
         while count != perm_length:
@@ -404,27 +409,26 @@ class mp_sampler():
     def __del__(self):
         self._shutdown_workers()
 
-
 # if __name__ == '__main__':
-    # # TODO: 1. test the sample graph is always connected
-    # #       2. test the repetition computation is correct
-    # #       3. test the probability computation is correct
-    # #       4. improve the computing efficiency in func "compute_repetition"
-    # import networkx as nx
-    # from args import Args
-    # args = Args()
-    # MPS = mp_sampler(args)
-    # import time
-    # N = 50
-    # graph = nx.path_graph(N)
-    # params = list(range(N))
-    # ct = 0
-    # for i in range(100):
-    #     st = time.time()
-    #     s = MPS.compute_repetition(graph, params)
-    #     ct += time.time()-st
-    #     print(s)
-    # print(ct/100) #time: 0.7-200; 0.047-50; 4.3-500
+# # TODO: 1. test the sample graph is always connected
+# #       2. test the repetition computation is correct
+# #       3. test the probability computation is correct
+# #       4. improve the computing efficiency in func "compute_repetition"
+# import networkx as nx
+# from args import Args
+# args = Args()
+# MPS = mp_sampler(args)
+# import time
+# N = 50
+# graph = nx.path_graph(N)
+# params = list(range(N))
+# ct = 0
+# for i in range(100):
+#     st = time.time()
+#     s = MPS.compute_repetition(graph, params)
+#     ct += time.time()-st
+#     print(s)
+# print(ct/100) #time: 0.7-200; 0.047-50; 4.3-500
 
 # if __name__ == '__main__':
 #     import networkx as nx
@@ -433,36 +437,36 @@ class mp_sampler():
 #     mapping = {nodes[i]: i for i in range(len(nodes))}
 #     graph = nx.relabel_nodes(graph, mapping)
 #     pass
-    # import networkx as nx
-    # from networkx.algorithms import isomorphism
-    #
-    # N =32
-    # graph = nx.path_graph(N)
-    #
-    # #perms = list(map(list, itertools.permutations(list(range(N)))))
-    # node_labels = color_refinement(graph, 3)
-    # target = 4
-    # iso_nodes = [node for node, label in node_labels.items() if label == node_labels[target]]
-    #
-    # print(len(iso_nodes))
-    # iso_nodes.remove(target)
-    # nodes = list(graph.nodes())
-    # target_nodes = nodes[:]
-    # target_nodes.remove(target)
-    # target_graph = graph.subgraph(target_nodes)
-    # rep = 1
-    # for iso_node in iso_nodes:
-    #     source_nodes = nodes[:]
-    #     source_nodes.remove(iso_node)
-    #     source_graph = graph.subgraph(source_nodes)
-    #     GM = isomorphism.GraphMatcher(target_graph, source_graph).is_isomorphic()
-    #     if GM:
-    #         rep += 1
-    # print(rep)
-    # pass
-    # params = list(range(N))
+# import networkx as nx
+# from networkx.algorithms import isomorphism
+#
+# N =32
+# graph = nx.path_graph(N)
+#
+# #perms = list(map(list, itertools.permutations(list(range(N)))))
+# node_labels = color_refinement(graph, 3)
+# target = 4
+# iso_nodes = [node for node, label in node_labels.items() if label == node_labels[target]]
+#
+# print(len(iso_nodes))
+# iso_nodes.remove(target)
+# nodes = list(graph.nodes())
+# target_nodes = nodes[:]
+# target_nodes.remove(target)
+# target_graph = graph.subgraph(target_nodes)
+# rep = 1
+# for iso_node in iso_nodes:
+#     source_nodes = nodes[:]
+#     source_nodes.remove(iso_node)
+#     source_graph = graph.subgraph(source_nodes)
+#     GM = isomorphism.GraphMatcher(target_graph, source_graph).is_isomorphic()
+#     if GM:
+#         rep += 1
+# print(rep)
+# pass
+# params = list(range(N))
 
-    # ct = 0
+# ct = 0
 #
 #     for i in range(100):
 #         st = time.time()
