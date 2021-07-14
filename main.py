@@ -27,11 +27,35 @@ if __name__ == '__main__':
     random.seed(args.seed)
 
     # graphs = create_graphs(args)[:100] # for implementation test
-    graphs = create_graphs(args)
+    # graphs = create_graphs(args)
+
+    ############################################################
+    # torch.save(graphs, 'tensor.pt')
+    # graphs = torch.load('tensor.pt')
+    graphs = [900, 9000, 9001, 9002, 9003, 9004, 9006, 9008, 9010, 9014, 9018, 9021, 9024]
+    base_path = os.path.join(args.dataset_path, f'{args.graph_type}/')
+    args.current_dataset_path = os.path.join(base_path, 'graphs/')
+    args.current_processed_dataset_path = args.current_dataset_path
+    # Produce feature map
+    from datasets.preprocess import (
+        mapping, random_walk_with_restart_sampling
+    )
+
+    feature_map = mapping(args.current_dataset_path,
+                          args.current_dataset_path + 'map.dict')
+    print(feature_map)
+    count = len(graphs)
+    graphs = [i for i in range(count)]
+    random.seed(32)
+    if args.data_small == True and len(graphs) > 400:
+        print('Using small dataset....')
+        graphs = random.sample(graphs, 400)
+    ############################################################
 
     random.shuffle(graphs)
-    graphs_train = graphs[: int(0.80 * len(graphs))]
-    graphs_validate = graphs[int(0.80 * len(graphs)): int(0.90 * len(graphs))]
+    graphs_train = graphs  # # graphs[: int(0.80 * len(graphs))]
+    graphs_validate = graphs  # # graphs[int(0.80 * len(graphs)): int(0.90 * len(graphs))]
+    ############################################################
 
     # show graphs statistics
     print('Model:', args.note)
